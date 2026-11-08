@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server so‘rovlari navbati — simulyatsiya</title>
+<style>
+:root{--bg:#f4f6fc;--card:#ffffff;--c2:#eef1fb;--line:#d5daf0;--pri:#6d4aff;--acc:#2563eb;--txt:#1e2347;--mut:#5b6393}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:radial-gradient(900px 500px at 90% -10%,#7c5cff1f,transparent),var(--bg);color:var(--txt);min-height:100vh}
+header{padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700;font-size:18px;background:linear-gradient(90deg,#7c5cff22,transparent),#fff}
+header span{color:var(--acc);font-weight:500;font-size:13px;margin-left:8px}
+main{display:grid;grid-template-columns:310px 1fr;gap:14px;padding:14px;max-width:1400px;margin:0 auto}
+@media(max-width:860px){main{grid-template-columns:1fr}}
+.card{background:linear-gradient(160deg,#fff,#f5f7ff);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 4px 18px #3b3f8f14}
+h3{font-size:14px;color:var(--acc);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+label{display:flex;justify-content:space-between;font-size:13px;color:var(--mut);margin:10px 0 3px}
+label b{color:var(--txt)}
+input[type=range]{width:100%;accent-color:var(--pri)}
+select{width:100%;background:var(--c2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:14px}
+.btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:14px}
+button{border:0;cursor:pointer;color:#fff;padding:10px 4px;border-radius:10px;font-weight:600;font-size:13px;transition:.15s}
+button:hover{transform:translateY(-2px)}
+#bGo{background:linear-gradient(135deg,#059669,#047857)}
+#bStop{background:linear-gradient(135deg,#e11d48,#9f1239)}
+#bReset{background:var(--c2);border:1px solid var(--line);color:var(--txt)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.s{background:var(--c2);border-radius:10px;padding:8px;text-align:center}
+.s b{display:block;font-size:19px}
+.s small{font-size:11px;color:var(--mut)}
+.leg{display:flex;gap:10px;font-size:12px;color:var(--mut);margin-top:10px;flex-wrap:wrap}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
+#rho{font-weight:700}
+.right{display:flex;flex-direction:column;gap:14px;min-width:0}
+canvas{width:100%;display:block}
+#cv{height:360px}
+.gs{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.gs{grid-template-columns:1fr}}
+.g{height:150px}
+</style>
+</head>
+<body>
+<header>⚡ Server so‘rovlari navbati <span>M/M/c simulyatsiyasi</span></header>
+<main>
+<div style="display:flex;flex-direction:column;gap:14px">
+<div class="card">
+<h3>Sozlamalar</h3>
+<label>Serverlar soni <b id="vC">3</b></label><input id="c" type="range" min="1" max="10" value="3">
+<label>So‘rovlar intensivligi λ (so‘rov/s) <b id="vL">4</b></label><input id="lam" type="range" min="0.5" max="20" step="0.5" value="4">
+<label>O‘rtacha xizmat vaqti (s) <b id="vS">0.6</b></label><input id="svc" type="range" min="0.1" max="5" step="0.1" value="0.6">
+<label>Algoritm</label>
+<select id="algo"><option value="fifo">FIFO</option><option value="prio">Priority Queue</option></select>
+<label>Tezlik</label>
+<select id="speed"><option value="1">1×</option><option value="2" selected>2×</option><option value="5">5×</option><option value="10">10×</option></select>
+<div class="btns"><button id="bGo">▶ Boshlash</button><button id="bStop">⏸ To‘xtatish</button><button id="bReset">↺ Qayta</button></div>
+<p style="margin-top:12px;font-size:13px;color:var(--mut)">Yuklanish ρ = λ/(c·μ): <span id="rho"></span></p>
+<div class="leg"><span><i style="background:#f43f5e"></i>Yuqori</span><span><i style="background:#f59e0b"></i>O‘rta</span><span><i style="background:#0ea5e9"></i>Past</span></div>
+</div>
+<div class="card">
+<h3>Statistika</h3>
+<div class="stats">
+<div class="s"><b id="sTot">0</b><small>Jami kelgan</small></div>
+<div class="s"><b id="sDone">0</b><small>Bajarilgan</small></div>
+<div class="s"><b id="sQ">0</b><small>Navbatda</small></div>
+<div class="s"><b id="sW">0.00 s</b><small>O‘rtacha kutish</small></div>
+<div class="s"><b id="sU">0%</b><small>Serverlar bandligi</small></div>
+<div class="s"><b id="sSv">0.00 s</b><small>O‘rtacha xizmat</small></div>
+<div class="s"><b id="sE">0%</b><small>Samaradorlik</small></div>
+<div class="s"><b id="sT">—</b><small>Nazariy Wq</small></div>
+</div>
+<p style="font-size:12px;color:var(--mut);margin-top:10px">Kutish (yuqori / o‘rta / past):<br><b id="sP" style="color:var(--txt)">— / — / —</b></p>
+</div>
+</div>
+<div class="right">
+<div class="card"><canvas id="cv"></canvas></div>
+<div class="gs">
+<div class="card"><canvas id="g1" class="g"></canvas></div>
+<div class="card"><canvas id="g2" class="g"></canvas></div>
+</div>
+</div>
+</main>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const fx=(x,d=2)=>isFinite(x)?x.toFixed(d):'∞';
+const COL=['','#f43f5e','#f59e0b','#0ea5e9'];
+const S={run:true,t:0,q:[],sv:[],ex:[],next:0,id:0,total:0,done:0,started:0,wSum:0,sSum:0,wP:[0,0,0,0],nP:[0,0,0,0],qh:[],ls:0};
+const V={w:800,h:360};
+const cv=$('cv'),cx=cv.getContext('2d'),g1=$('g1'),x1=g1.getContext('2d'),g2=$('g2'),x2=g2.getContext('2d');
+const P=()=>({c:+$('c').value,lam:+$('lam').value,svc:+$('svc').value,speed:+$('speed').value,algo:$('algo').value});
+const expR=m=>-Math.log(1-Math.random())*m;
+const prR=()=>{const r=Math.random();return r<.2?1:r<.5?2:3};
+
+function theory(lam,mu,c){
+  const a=lam/mu,rho=a/c;if(rho>=1)return{ok:false,rho};
+  let sum=0,f=1;for(let k=0;k<c;k++){if(k>0)f*=k;sum+=Math.pow(a,k)/f}
+  const term=Math.pow(a,c)/(f*c)/(1-rho),P0=1/(sum+term),Lq=term*P0*rho/(1-rho);
+  return{ok:true,rho,Wq:Lq/lam};
+}
+function fit(c,h){
+  const d=window.devicePixelRatio||1,w=c.clientWidth||300;
+  if(c.width!==Math.round(w*d)||c.height!==Math.round(h*d)){c.width=Math.round(w*d);c.height=Math.round(h*d)}
+  c.getContext('2d').setTransform(d,0,0,d,0,0);return w;
+}
+function reset(){
+  const p=P();
+  Object.assign(S,{t:0,q:[],ex:[],id:0,total:0,done:0,started:0,wSum:0,sSum:0,wP:[0,0,0,0],nP:[0,0,0,0],qh:[],ls:0});
+  V.h=Math.max(300,70+p.c*46);cv.style.height=V.h+'px';
+  S.sv=Array.from({length:p.c},()=>({busy:false,end:0,start:0,req:null,bt:0}));
+  S.next=expR(1/p.lam);
+}
+function step(dt,p){
+  S.t+=dt;
+  S.sv.forEach(s=>{if(s.busy)s.bt+=dt});
+  while(S.next<=S.t){
+    S.q.push({id:++S.id,arr:S.next,pr:prR(),x:40,y:V.h/2,life:1});S.total++;S.next+=expR(1/p.lam);
+  }
+  S.sv.forEach(s=>{if(s.busy&&s.end<=S.t){S.done++;S.sSum+=s.end-s.start;s.req.life=.9;S.ex.push(s.req);s.busy=false;s.req=null}});
+  for(const s of S.sv){
+    if(s.busy||!S.q.length)continue;
+    let x=0;
+    if(p.algo==='prio')for(let m=1;m<S.q.length;m++)if(S.q[m].pr<S.q[x].pr)x=m;
+    const r=S.q.splice(x,1)[0],w=S.t-r.arr;
+    s.busy=true;s.start=S.t;s.end=S.t+expR(p.svc);s.req=r;
+    S.started++;S.wSum+=w;S.wP[r.pr]+=w;S.nP[r.pr]++;
+  }
+  while(S.t>=S.ls+0.5){S.ls+=0.5;S.qh.push([S.q.length]);if(S.qh.length>120)S.qh.shift()}
+}
+const perRow=()=>Math.max(4,Math.floor((V.w*0.5-100)/24));
+function slot(i){const pr=perRow(),cap=pr*6,j=Math.min(i,cap-1);return{x:100+(j%pr)*24,y:V.h/2-60+Math.floor(j/pr)*24}}
+function spY(i){const n=S.sv.length,sp=Math.min(52,(V.h-40)/n);return V.h/2-(n-1)*sp/2+i*sp}
+function circ(x,y,r,col,txt,al){
+  cx.globalAlpha=al;cx.fillStyle=col;cx.beginPath();cx.arc(x,y,r,0,7);cx.fill();
+  cx.fillStyle='#fff';cx.font='bold 9px system-ui';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(txt,x,y+.5);cx.globalAlpha=1;
+}
+function draw(dt){
+  V.w=fit(cv,V.h);
+  cx.clearRect(0,0,V.w,V.h);
+  const k=1-Math.exp(-dt*9),H=V.h,W=V.w,cap=perRow()*6;
+  // yo‘nalish chiziqlari
+  cx.strokeStyle='#c3c9e8';cx.setLineDash([5,5]);cx.beginPath();cx.moveTo(62,H/2);cx.lineTo(90,H/2);cx.moveTo(100+perRow()*24,H/2);cx.lineTo(W-135,H/2);cx.stroke();cx.setLineDash([]);
+  // manba
+  cx.fillStyle='#e6e9ff';cx.strokeStyle='#7c5cff';cx.lineWidth=2;cx.beginPath();cx.arc(40,H/2,22,0,7);cx.fill();cx.stroke();
+  cx.fillStyle='#5b6393';cx.font='11px system-ui';cx.textAlign='center';cx.fillText('Mijozlar',40,H/2+38);
+  // navbat maydoni
+  cx.fillStyle='#5b6393';cx.textAlign='left';cx.fillText('Navbat ('+S.q.length+')',100,H/2-78);
+  cx.strokeStyle='#d5daf0';cx.strokeRect(92,H/2-72,perRow()*24+4,6*24+2);
+  // serverlar
+  S.sv.forEach((s,i)=>{
+    const y=spY(i),bx=W-130;
+    cx.fillStyle='#f1f3fd';cx.strokeStyle=s.busy?'#6d4aff':'#c3c9e8';cx.lineWidth=s.busy?2:1;
+    if(s.busy){cx.shadowColor='#7c5cff';cx.shadowBlur=14}
+    cx.fillRect(bx,y-18,118,36);cx.strokeRect(bx,y-18,118,36);cx.shadowBlur=0;
+    if(s.busy){cx.fillStyle=COL[s.req.pr];cx.globalAlpha=.8;cx.fillRect(bx,y+15,118*Math.min(1,(S.t-s.start)/(s.end-s.start)),3);cx.globalAlpha=1}
+    cx.fillStyle=s.busy?'#1e2347':'#059669';cx.font='11px system-ui';cx.textAlign='left';cx.fillText('Server '+(i+1),bx+30,y-4);
+    cx.fillStyle='#5b6393';cx.fillText(s.busy?'BAND':'BO‘SH',bx+30,y+9);
+    if(s.busy){s.req.tx=bx+14;s.req.ty=y}
+  });
+  // so‘rovlar
+  S.q.forEach((r,i)=>{const t=slot(i);r.x+=(t.x-r.x)*k;r.y+=(t.y-r.y)*k;if(i<cap)circ(r.x,r.y,9,COL[r.pr],r.id%100,1)});
+  if(S.q.length>cap){cx.fillStyle='#1e2347';cx.font='bold 12px system-ui';cx.textAlign='left';cx.fillText('+'+(S.q.length-cap),100+perRow()*24+10,H/2+66)}
+  S.sv.forEach(s=>{if(s.busy){const r=s.req;r.x+=(r.tx-r.x)*k*1.3;r.y+=(r.ty-r.y)*k*1.3;circ(r.x,r.y,9,COL[r.pr],r.id%100,1)}});
+  S.ex=S.ex.filter(r=>{r.life-=dt*1.2;r.x+=dt*160;if(r.life<=0)return false;circ(r.x,r.y,9,COL[r.pr],'✓',r.life);return true});
+}
+function plot(c,x,data,color,title,max0){
+  const w=fit(c,150),h=150;x.clearRect(0,0,w,h);
+  const max=Math.max(max0,...data);
+  x.fillStyle='#5b6393';x.font='11px system-ui';x.textAlign='left';x.fillText(title,4,12);
+  x.strokeStyle='#e1e5f5';for(let i=0;i<=2;i++){const y=24+(h-34)*i/2;x.beginPath();x.moveTo(30,y);x.lineTo(w,y);x.stroke();x.fillText(Math.round(max*(1-i/2)),2,y+4)}
+  if(data.length<2)return;
+  const X=i=>30+(w-34)*i/119,Y=v=>24+(h-34)*(1-v/max);
+  x.beginPath();data.forEach((v,i)=>i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v)));
+  x.strokeStyle=color;x.lineWidth=2;x.stroke();
+  x.lineTo(X(data.length-1),h-10);x.lineTo(X(0),h-10);x.fillStyle=color+'33';x.fill();
+}
+function bars(){
+  const w=fit(g2,150),h=150,n=S.sv.length;x2.clearRect(0,0,w,h);
+  x2.fillStyle='#5b6393';x2.font='11px system-ui';x2.textAlign='left';x2.fillText('Serverlar yuklamasi (%)',4,12);
+  const bw=Math.min(40,(w-20)/n-6);
+  S.sv.forEach((s,i)=>{
+    const u=S.t>0?s.bt/S.t*100:0,bh=(h-50)*u/100,bx=10+i*((w-20)/n)+((w-20)/n-bw)/2;
+    x2.fillStyle='#e6e9f7';x2.fillRect(bx,24,bw,h-50);
+    x2.fillStyle='#a78bfa';x2.fillRect(bx,24+(h-50)-bh,bw,bh);
+    x2.fillStyle='#1e2347';x2.textAlign='center';x2.fillText(Math.round(u)+'%',bx+bw/2,h-26+(0)+0);
+    x2.fillStyle='#5b6393';x2.fillText('S'+(i+1),bx+bw/2,h-8);
+  });
+}
+function stats(){
+  const p=P(),n=S.sv.length,mu=1/p.svc,th=theory(p.lam,mu,p.c);
+  const u=S.t>0?S.sv.reduce((a,s)=>a+s.bt,0)/(n*S.t)*100:0;
+  $('sTot').textContent=S.total;$('sDone').textContent=S.done;$('sQ').textContent=S.q.length;
+  $('sW').textContent=fx(S.started?S.wSum/S.started:0)+' s';
+  $('sU').textContent=fx(u,0)+'%';$('sSv').textContent=fx(S.done?S.sSum/S.done:0)+' s';
+  $('sE').textContent=fx(S.total?S.done/S.total*100:0,0)+'%';
+  $('sT').textContent=th.ok?fx(th.Wq)+' s':'∞';
+  const a=i=>S.nP[i]?fx(S.wP[i]/S.nP[i])+' s':'—';
+  $('sP').textContent=a(1)+' / '+a(2)+' / '+a(3);
+  $('rho').textContent=fx(th.rho)+(th.ok?' ✔ barqaror':' ✖ barqaror emas');
+  $('rho').style.color=th.ok?'#059669':'#e11d48';
+}
+let last=performance.now(),tick=0;
+function loop(now){
+  const rdt=Math.min(.05,(now-last)/1000);last=now;
+  if(S.run){const p=P(),dt=rdt*p.speed,n=Math.max(1,Math.ceil(dt/.05));for(let i=0;i<n;i++)step(dt/n,p)}
+  draw(rdt);
+  if(++tick%3===0){stats();plot(g1,x1,S.qh.map(a=>a[0]),'#2563eb','Navbat uzunligi (so‘nggi 60 s)',5);bars()}
+  requestAnimationFrame(loop);
+}
+$('c').addEventListener('input',()=>{$('vC').textContent=$('c').value;reset()});
+$('lam').addEventListener('input',()=>$('vL').textContent=$('lam').value);
+$('svc').addEventListener('input',()=>$('vS').textContent=$('svc').value);
+$('bGo').onclick=()=>{S.run=true};
+$('bStop').onclick=()=>{S.run=false};
+$('bReset').onclick=()=>{reset();S.run=true};
+reset();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
